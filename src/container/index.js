@@ -416,7 +416,7 @@ export class Container extends Component {
                                 </div>
                                 <div className="footer">
                                     <p>Data from <a href="https://www.worldometers.info/">worldometer</a> and <a href="https://onemocneni-aktualne.mzcr.cz/covid-19">mzcr.cz</a></p>
-                                    <p>Created by <a href="www.linkedin.com/in/pavel-pochobradsky">Pavel Pochobradský</a></p>
+                                    <p>Created by <a href="https://www.linkedin.com/in/pavel-pochobradsky">Pavel Pochobradský</a></p>
                                 </div>
                             </div>
                         ) : null
