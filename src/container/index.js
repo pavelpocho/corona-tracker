@@ -382,11 +382,41 @@ export class Container extends Component {
                                     </div>
                                 </div>
                                 <div className="graph-wrap">
-                                    <Line data={{ labels, datasets: dataToDisplay.map(d => { return { data: d.data, label: this.capitalizeFirstLetter(d.label), backgroundColor: d.backgroundColor, borderColor: d.borderColor } }) }} options={{ animation: { duration: 300 } }} />
+                                    <Line data={{ 
+                                        labels,
+                                        datasets: dataToDisplay.map(d => { 
+                                            return { 
+                                                data: d.data,
+                                                label: this.capitalizeFirstLetter(d.label),
+                                                backgroundColor: d.backgroundColor,
+                                                borderColor: d.borderColor 
+                                            } 
+                                        })
+                                    }} options={{
+                                        animation: { duration: 300 },
+                                        scales: {
+                                            yAxes: [{
+                                                scaleLabel: {
+                                                    display: true,
+                                                    labelString: this.state.mode == 0 ? "Infections" : "Deaths"
+                                                }
+                                            }],
+                                            xAxes: [{
+                                                scaleLabel: {
+                                                    display: true,
+                                                    labelString: "Days since graph match"
+                                                }
+                                            }]
+                                        }
+                                    }} />
                                     <div className="time-duration-wrap">
                                         <p>Max. number of days on graph</p>
                                         <input defaultValue={100} onKeyUp={(e) => {this.setMaxDaysKey(e)}} onChange={(e) => {this.setMaxDays(e)}} type="number" min={2} />
                                     </div>
+                                </div>
+                                <div className="footer">
+                                    <p>Data from <a href="https://www.worldometers.info/">worldometer</a> and <a href="https://onemocneni-aktualne.mzcr.cz/covid-19">mzcr.cz</a></p>
+                                    <p>Created by <a href="www.linkedin.com/in/pavel-pochobradsky">Pavel Pochobradský</a></p>
                                 </div>
                             </div>
                         ) : null
