@@ -355,7 +355,14 @@ export class Container extends Component {
                         this.state.dataDisplay != null ? (
                             <div className="comparer">
                                 <h1>Speed of COVID-19 in different countries</h1>
-                                <p>This app shows the relative speed at which the COVID-19 disease is spreading in different countries by matching the graphs of the number of infections or deaths at a certain starting point.</p>
+                                <p id="intro-text">This app shows the relative speed at which the COVID-19 disease is spreading in different countries by matching the graphs of the number of infections or deaths at a certain starting point. Here's how:</p>
+                                <p className="how-to-text">1. Choose if you want to compare confirmed cases or deaths. Note that not all cases are discovered. The same is <u>not</u> true for deaths.</p>
+                                <p className="how-to-text">2. Choose on which number you want the graphs to be matched. This will be a 'starting point' for all of the countries.</p>
+                                <p className="how-to-text">3. Observe the difference in the speed at wich the disease spreads in each selected country.</p>
+                                {/*<button ripplecolor="white" className="show-more-info">More info...</button>
+                                <div className="more-info-wrap">
+                                    
+                                </div>*/}
                                 <div className="option-wrap flex">
                                     <div className="option-inner-wrap">
                                         <h3>Comparing {this.state.mode == 0 ? "Infections" : "Deaths"}</h3>

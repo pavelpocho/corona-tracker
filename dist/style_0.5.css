@@ -2,6 +2,7 @@ body {
     margin: 0px;
     font-family: 'Kanit', sans-serif;
     background-color: #e6e6e6;
+    position: relative;
 }
 input, button {
     font-family: 'Kanit', sans-serif;
@@ -19,11 +20,10 @@ input, button {
 h1 {
     width: 100%;
     z-index: 2;
-    position: absolute;
+    position: relative;
     left: 0px;
     top: 0px;
-    height: 82px;
-    line-height: 82px;
+    padding: 20px 0px;
     margin: 0px auto;
     background-color: white;
     color: #D13B52;
@@ -32,9 +32,39 @@ h1 {
     max-width: 100%;
     margin-bottom: 12px;
 }
+#intro-text {
+    margin-top: 32px;
+    margin-bottom: 16px;
+    padding: 0px 24px;
+}
+.how-to-text {
+    color: #D13B52;
+    font-size: 16px;
+    padding: 0px 48px;
+}
+.show-more-info {
+    border-radius: 4px;
+    background-color: transparent;
+    box-shadow: none;
+}
 .country-list {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+}
+@media all and (max-width: 1099px) {
+    .country-list {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+    }
+}
+@media all and (max-width: 899px) {
+    .country-list {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+}
+@media all and (max-width: 699px) {
+    .country-list {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 .country-picker {
     margin: 4px 10px;
@@ -90,6 +120,7 @@ button:hover {
     position: sticky;
     z-index: 2;
     top: 20px;
+    margin-top: 32px;
     box-shadow: 1px 1px 14px -8px #222;
 }
 .graph-wrap {
