@@ -76,6 +76,10 @@ h1 {
     border: 2px solid transparent;
     transition: border-color 0.21s;
 }
+.country-picker.right {
+    display: inline-flex;
+    margin: 4px 0px;
+}
 .country-picker.selected {
     border: 2px solid #D13B52;
 }
@@ -90,8 +94,19 @@ h1 {
     justify-content: space-between;
 }
 .time-duration-wrap {
+    text-align: right;
+    max-width: 50%;
+}
+.tdw-inner {
     display: flex;
     justify-content: flex-end;
+    height: 37px;
+}
+#no-future-warning {
+    color: #D13B52;
+    font-size: 14px;
+    line-height: 18px;
+    margin: 0px 20px 10px;
 }
 h3 {
     min-width: 50%;
@@ -122,6 +137,14 @@ button:hover {
     top: 20px;
     margin-top: 32px;
     box-shadow: 1px 1px 14px -8px #222;
+}
+@media all and (max-width: 799px) {
+    .option-wrap.flex {
+        flex-direction: column;
+    }
+    .option-inner-wrap {
+        margin: 10px auto;
+    }
 }
 .graph-wrap {
     box-shadow: 1px 1px 14px -8px #222;
@@ -159,6 +182,10 @@ input#match-at {
     font-size: 24px;
     width: 120px;
 }
+input#match-at-date {
+    font-size: 18px;
+    width: 194px;
+}
 button#mode-switch {
     border: 2px solid #D13B52;
     box-shadow: none;
@@ -167,6 +194,7 @@ button#mode-switch {
 }
 .time-duration-wrap p {
     margin: 4px 8px;
+    line-height: 29px;
 }
 .time-duration-wrap input {
     width: 70px;
@@ -183,4 +211,26 @@ button:disabled {
     background-color: #f1f1f1;
     color: #aaa;
     cursor: default;
+}
+.flex-space-between {
+    display: flex;
+    justify-content: space-between;
+}
+.days-ahead-wrap {
+    margin-bottom: 12px;
+}
+.days-ahead {
+    color: #444;
+    margin: 4px 12px;
+    font-size: 14px;
+    text-align: left;
+}
+.days-ahead-title {
+    color: #D13B52;
+    margin: 4px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    height: 29px;
+    line-height: 29px;
+    text-align: left;
 }

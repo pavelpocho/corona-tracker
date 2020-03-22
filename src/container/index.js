@@ -44,9 +44,11 @@ export class Container extends Component {
             dataDisplay: [],
             deathDataDisplay: [],
             selectedCountries: [],
-            minPeople: 0,
-            maxDays: 100,
-            mode: 0
+            minPeople: null,
+            maxDays: 50,
+            startDate: null,
+            mode: 0,
+            projection: false
         }
 
         this.europeDataContainer = React.createRef();
@@ -81,6 +83,8 @@ export class Container extends Component {
         this.algeriaDataContainer = React.createRef();
 
         this.display = React.createRef();
+        this.peopleInput = React.createRef();
+        this.dateInput = React.createRef();
 
     }
 
@@ -121,9 +125,11 @@ export class Container extends Component {
                         var finalData = JSON.parse(finalText);
                         this.setState(prevState => {
                             let dD = prevState.dataDisplay;
+                            console.log(finalData);
                             dD.push({
                                 label: "World w/o China",
                                 data: finalData["series"][0]["data"],
+                                dates: finalData["xAxis"]["categories"],
                                 borderColor: "rgba(" + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + 1 + ")",
                                 backgroundColor: "rgba(0,0,0,0)"
                             });
@@ -145,7 +151,7 @@ export class Container extends Component {
             let dD = prevState.dataDisplay;
             dD.push({
                 label: "czechia",
-                data: [3,3,5,5,8,19,26,32,38,63,94,116,141,189,298,383,450,560,765,889,995],
+                data: [3,3,5,5,8,19,26,32,38,63,94,116,141,189,298,383,450,560,765,889,1047],
                 borderColor: "rgba(" + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + 1 + ")",
                 backgroundColor: "rgba(0,0,0,0)"
             });
@@ -197,6 +203,7 @@ export class Container extends Component {
                             var finalText = this.fixJson(el.innerHTML);                        
                             gotData = true;
                             var finalData = JSON.parse(finalText);
+                            console.log(finalData);
                             this.setState(prevState => {
                                 let dD = prevState.dataDisplay;
                                 dD.push({
@@ -206,6 +213,7 @@ export class Container extends Component {
                                     // "           " - spaces for death series
                                     // "               " - spaces for death data
                                     data: finalData["       series"][0]["           data"],
+                                    dates: finalData["       xAxis"]["           categories"],
                                     borderColor: "rgba(" + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + 1 + ")",
                                     backgroundColor: "rgba(0,0,0,0)"
                                 });
@@ -229,6 +237,7 @@ export class Container extends Component {
                                     // "           " - spaces for death series
                                     // "               " - spaces for death data
                                     data: finalData["           series"][0]["               data"],
+                                    dates: finalData["           xAxis"]["               categories"],
                                     borderColor: prevState.dataDisplay[prevState.deathDataDisplay.length].borderColor,
                                     backgroundColor: "rgba(0,0,0,0)"
                                 });
@@ -264,7 +273,10 @@ export class Container extends Component {
         console.log("Setting min people");
         console.log(e.target.value);
         this.setState({
-            minPeople: e.target.value
+            minPeople: e.target.value,
+            startDate: null
+        }, () => {
+            this.dateInput.current.value = null
         })
     }
 
@@ -286,6 +298,15 @@ export class Container extends Component {
         if (e.keyCode == 46 || e.keyCode == 8) {
             this.setMaxDays(e);
         }
+    }
+
+    getDateString(date) {
+        return (date.getDate().toString().length == 1 ? "0" : "") + date.getDate() + "." + ((date.getMonth() + 1).toString().length == 1 ? "0" : "") + (date.getMonth() + 1) + "." + date.getFullYear();
+    }
+
+    getDayDifference(date1, date2) {
+        console.log(date1.getTime() - date2.getTime());
+        return (date1.getTime() - date2.getTime()) / 1000 / 60 / 60 / 24;
     }
 
     setMode() {
@@ -316,6 +337,23 @@ export class Container extends Component {
         return string[0].toUpperCase() + string.slice(1);
     }
 
+    setStartDate(e) {
+        this.setState({
+            startDate: e.currentTarget.value,
+            minPeople: null
+        }, () => {
+            this.peopleInput.current.value = null
+        })
+    }
+    
+    toggleProjection() {
+        this.setState(prevState => {
+            return {
+                projection: !prevState.projection   
+            }
+        })
+    }
+
     render() {
         var dataToDisplay = [];
         for (var i = 0; i < this.statsToShow().length; i++) {
@@ -323,30 +361,107 @@ export class Container extends Component {
                 dataToDisplay.push({
                     label: this.statsToShow()[i].label,
                     data: this.statsToShow()[i].data.map(x => x),
+                    dates: this.statsToShow()[i].dates.map(x => new Date(x + " 2020")),
                     borderColor: this.statsToShow()[i].borderColor,
                     backgroundColor: this.statsToShow()[i].backgroundColor
                 });
-                let d = dataToDisplay[dataToDisplay.length - 1].data;
-                for (var k = 0; k < d.length; k++) {
-                    if (d[k] <= this.state.minPeople) {
-                        d.splice(k, 1);
-                        k--;
+                if (this.state.minPeople != null) {
+                    let d = dataToDisplay[dataToDisplay.length - 1].data;
+                    let dates = dataToDisplay[dataToDisplay.length - 1].dates;
+                    let spliced = 0;
+                    for (var k = 0; k < d.length; k++) {
+                        if (d[k] <= this.state.minPeople) {
+                            d.splice(k, 1);
+                            dates.splice(k, 1);
+                            spliced ++;
+                            k--;
+                        }
                     }
+                    dataToDisplay[dataToDisplay.length - 1].spliced = spliced;
+                }
+                else if (this.state.startDate != null) {
+                    let d = dataToDisplay[dataToDisplay.length - 1].data;
+                    let dates = dataToDisplay[dataToDisplay.length - 1].dates;
+                    let spliced = 0;
+                    for (var k = 0; k < d.length; k++) {
+                        if (dates[k] < new Date(new Date(this.state.startDate).getTime() - 12 * 60 * 60 * 1000)) {
+                            d.splice(k, 1);
+                            dates.splice(k, 1);
+                            spliced ++;
+                            k--;
+                        }
+                    }
+                    while (dates[0].getTime() - 24 * 60 * 60 * 1000 > new Date(this.state.startDate).getTime() - 12 * 60 * 60 * 1000) {
+                        dates.unshift(new Date(dates[0].getTime() - 24 * 60 * 60 * 1000));
+                        d.unshift(0);
+                    }
+                    dataToDisplay[dataToDisplay.length - 1].spliced = spliced;
                 }
             }
         }
 
-        console.log(this.state.deathDataDisplay);
+        console.log("Render");
+
+        for (var k = 0; k < dataToDisplay.length; k++) {
+            var d = dataToDisplay[k];
+            var gr = [];
+            for (var i = 0; i < d.data.length - 1; i++) {
+                gr.push(d.data[i] == 0 ? 0 : (Math.round(d.data[i + 1] / d.data[i] * 100) / 100));
+            }
+            var secondgr = [];
+            for (var i = 0; i < gr.length - 1; i++) {
+                secondgr.push(((gr[i] - 1) == 0) ? 0 : (Math.round((gr[i + 1] - 1) / (gr[i] - 1) * 100) / 100));
+            }
+            d.gr = gr;
+            d.secondgr = secondgr;
+
+            var origDataLength = d.data.length;
+
+            d.predData = d.data.map(d => null);
+            d.predData[d.predData.length - 1] = d.data[d.data.length - 1];
+
+            if (this.state.projection) {
+                for (var i = 0; i < Math.max(0, this.state.maxDays - origDataLength); i++) {
+                    d.gr.push(((d.gr[d.gr.length - 1] - 1) * d.secondgr.reduce((a,b) => a + b, 0) / (d.secondgr.length)) + 1);
+                    d.predData.push(Math.round(d.predData[d.predData.length - 1] * d.gr[d.gr.length - 1]));
+                    if (d.predData[d.predData.length - 1] > Math.pow(10,8)) break;
+                }
+            }
+        }
+
+
 
         for (var i = 0; i < dataToDisplay.length; i++) {
             dataToDisplay[i].data = dataToDisplay[i].data.slice(0, Math.min(this.state.maxDays, dataToDisplay[i].data.length));
+            dataToDisplay[i].dates = dataToDisplay[i].dates.slice(0, Math.min(this.state.maxDays, dataToDisplay[i].dates.length));
+            dataToDisplay[i].predData = dataToDisplay[i].predData.slice(0, Math.min(this.state.maxDays, dataToDisplay[i].predData.length));
+            dataToDisplay[i].gr = dataToDisplay[i].gr.slice(0, Math.min(this.state.maxDays, dataToDisplay[i].gr.length));
+            dataToDisplay[i].secondgr = dataToDisplay[i].secondgr.slice(0, Math.min(this.state.maxDays, dataToDisplay[i].secondgr.length));
         }
 
         var maxLength = 0;
+        var baseLineSplice = 100000000;
+        var baseLineCountry = "";
+        var baseLineDate = null;
         dataToDisplay.forEach(d => {
-            maxLength = Math.max(d.data.length, maxLength);
-        })
+            maxLength = Math.max(d.predData.length, maxLength);
+            if (baseLineDate == null || d.dates[0].getTime() < baseLineDate.getTime()) {
+                baseLineCountry = this.capitalizeFirstLetter(d.label);
+                baseLineDate = d.dates[0];
+            }
+            baseLineSplice = Math.min(d.spliced, baseLineSplice);
+        });
         var labels = [...Array(maxLength).keys()]
+
+        var displayShiftMessage = false;
+        dataToDisplay.forEach(d => {
+            if (d.label != baseLineCountry.toLowerCase() && this.getDayDifference(d.dates[0], baseLineDate) != 0) {
+                displayShiftMessage = true;
+            }
+        })
+
+        console.log("Max date");
+        console.log(new Date().getFullYear() + "-" + ((new Date().getMonth() + 1).toString().length == 1 ? "0" : "") + (new Date().getMonth() + 1) + "-" + ((new Date().getDate() - 1).toString().length == 1 ? "0" : "") + (new Date().getDate() - 1));
 
         return (
             <Fragment>
@@ -370,7 +485,11 @@ export class Container extends Component {
                                     </div>
                                     <div className="option-inner-wrap">
                                         <h3>Match Graphs at [{this.state.mode == 0 ? "Infections" : "Deaths"}]:</h3>
-                                        <input id="match-at" defaultValue={0} onKeyUp={(e) => {this.setMinPeopleKey(e)}} onChange={(e) => {this.setMinPeople(e)}} type="number" min={0} />
+                                        <input ref={this.peopleInput} id="match-at" defaultValue={0} onKeyUp={(e) => {this.setMinPeopleKey(e)}} onChange={(e) => {this.setMinPeople(e)}} type="number" min={0} />
+                                    </div>
+                                    <div className="option-inner-wrap">
+                                        <h3>Match Graphs at Date:</h3>
+                                        <input ref={this.dateInput} id="match-at-date" defaultValue={0} onChange={(e) => {this.setStartDate(e)}} type="date" max={new Date().getFullYear() + "-" + ((new Date().getMonth() + 1).toString().length == 1 ? "0" : "") + (new Date().getMonth() + 1) + "-" + ((new Date().getDate() - 1).toString().length == 1 ? "0" : "") + (new Date().getDate() - 1)} />
                                     </div>
                                 </div>
                                 <div className="option-wrap no-flex">
@@ -398,9 +517,22 @@ export class Container extends Component {
                                                 backgroundColor: d.backgroundColor,
                                                 borderColor: d.borderColor 
                                             } 
-                                        })
+                                        }).concat(dataToDisplay.map(d => {
+                                            return { 
+                                                data: d.predData,
+                                                label: this.capitalizeFirstLetter(d.label) + " (pred.)",
+                                                backgroundColor: d.backgroundColor,
+                                                borderDash: [6, 3],
+                                                borderColor: d.borderColor 
+                                            }
+                                        }))
                                     }} options={{
                                         animation: { duration: 300 },
+                                        elements: {
+                                            line: {
+                                                tension: 0.1
+                                            }
+                                        },
                                         scales: {
                                             yAxes: [{
                                                 scaleLabel: {
@@ -416,13 +548,58 @@ export class Container extends Component {
                                             }]
                                         }
                                     }} />
-                                    <div className="time-duration-wrap">
-                                        <p>Max. number of days on graph</p>
-                                        <input defaultValue={100} onKeyUp={(e) => {this.setMaxDaysKey(e)}} onChange={(e) => {this.setMaxDays(e)}} type="number" min={2} />
+                                    <div className="flex-space-between">
+                                        <div className="days-ahead-wrap">
+                                            {
+                                                baseLineCountry == "" || !displayShiftMessage ? (
+                                                    baseLineDate != null ? (
+                                                        <p className="days-ahead-title">Graph starts at {this.getDateString(baseLineDate)}</p>
+                                                    ) : null
+                                                ) : (
+                                                    <Fragment>
+                                                        <p className="days-ahead-title">Compared to {baseLineCountry} (starts at {this.getDateString(baseLineDate)}), other countries are shifted</p>
+                                                        {
+                                                            dataToDisplay.map((d, i) => {
+                                                                if (d.label == baseLineCountry.toLowerCase() || this.getDayDifference(d.dates[0], baseLineDate) == 0) return null;
+                                                                return (
+                                                                    <p className="days-ahead" key={i}>
+                                                                        {this.capitalizeFirstLetter(d.label)}: {this.getDayDifference(d.dates[0], baseLineDate)} day{d.spliced - baseLineSplice == 1 ? "" : "s"} forward (starts at {this.getDateString(d.dates[0])})
+                                                                    </p>
+                                                                )
+                                                            })
+                                                        }
+                                                    </Fragment>
+                                                )
+                                            }
+                                        </div>
+                                        <div className="time-duration-wrap">
+                                            <div className="tdw-inner">
+                                                <p>Max. number of days on graph</p>
+                                                <input defaultValue={50} onKeyUp={(e) => {this.setMaxDaysKey(e)}} onChange={(e) => {this.setMaxDays(e)}} type="number" min={2} />
+                                            </div>                                            
+                                            <button onClick={() => {this.toggleProjection()}} className={"country-picker right" + (this.state.projection ? " selected" : "")}>
+                                                <span className={"checkbox" + (this.state.projection ? " selected" : "")}><i className="material-icons">done</i></span>
+                                                {"Show Projections on Graph"}
+                                            </button>
+                                            <p id="no-future-warning">Note that these projections simply extend the existing data! They are not a prediction of the future!</p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        {/*
+                                            dataToDisplay.map((d, i) => {
+                                                return (
+                                                    <div key={i}>
+                                                        <p>{this.capitalizeFirstLetter(d.label)}: {d.gr.join(", ")} - Avg. {d.gr.reduce((a,b) => a + b, 0) / d.gr.length}</p>
+                                                        <p>{this.capitalizeFirstLetter(d.label + " 2nd")}: {d.secondgr.map(ds => Math.min(ds, 2)).join(", ")} - Avg. {d.secondgr.reduce((a,b) => a + Math.min(b, 2), 0) / (d.secondgr.length)}</p>
+                                                    </div>
+                                                )
+                                            })
+                                        */}
                                     </div>
                                 </div>
                                 <div className="footer">
                                     <p>Data from <a href="https://www.worldometers.info/">worldometer</a> and <a href="https://onemocneni-aktualne.mzcr.cz/covid-19">mzcr.cz</a></p>
+                                    <p style={{color: "#777"}}>v0.6<br/>Last App Update - 22.03.2020, 16:20<br/>Last Data Update - 22.03.2020, 16:20</p>
                                     <p>Created by <a href="https://www.linkedin.com/in/pavel-pochobradsky">Pavel Pochobradský</a></p>
                                 </div>
                             </div>
@@ -623,6 +800,8 @@ export class Container extends Component {
     }
 }
 
-const deathDataDisplay = JSON.parse('[{"label":"china","data":[17,25,41,56,80,106,132,170,213,259,304,361,425,490,563,636,722,811,908,1016,1113,1259,1380,1523,1665,1770,1868,2004,2118,2236,2345,2442,2592,2663,2715,2744,2788,2835,2870,2912,2943,2981,3012,3042,3070,3097,3119,3136,3158,3169,3176,3189,3199,3213,3226,3237,3245,3248,3255],"borderColor":"rgba(204,196,109,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"italy","data":[0,0,0,0,0,0,1,2,3,7,11,12,17,21,29,41,52,79,107,148,197,233,366,463,631,827,1016,1266,1441,1809,2158,2503,2978,3405,4032],"borderColor":"rgba(117,227,155,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"spain","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,3,8,10,17,30,36,55,86,133,196,294,342,533,638,831,1093],"borderColor":"rgba(142,74,228,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"germany","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,3,6,8,9,13,17,26,28,44,68],"borderColor":"rgba(84,85,212,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"iran","data":[0,0,0,0,2,2,4,6,8,12,16,19,26,34,43,54,66,77,92,108,124,145,194,237,291,354,429,514,611,724,853,988,1135,1284,1433],"borderColor":"rgba(209,189,245,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"us","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6,9,11,12,15,19,22,26,30,38,41,49,57,68,86,109,150,207,256],"borderColor":"rgba(147,24,125,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"france","data":[1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,3,4,4,7,9,16,19,30,33,48,61,79,91,127,148,175,264,372,450],"borderColor":"rgba(249,146,142,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"sKorea","data":[0,0,0,0,0,1,2,2,6,8,11,12,13,16,17,21,28,32,35,42,43,48,50,53,60,60,66,67,72,75,75,81,84,91,94],"borderColor":"rgba(68,85,221,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"switzerland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,3,4,7,11,13,14,19,27,33,43,56],"borderColor":"rgba(92,27,234,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"uk","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,2,3,5,6,8,10,11,21,35,55,71,104,144,177],"borderColor":"rgba(18,15,166,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"netherlands","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,3,4,4,5,5,10,12,20,24,43,58,76,106],"borderColor":"rgba(206,50,103,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"belgium","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,4,4,10,10,14,21,37],"borderColor":"rgba(133,243,196,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"austria","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,3,4,4,6,6],"borderColor":"rgba(131,64,95,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"norway","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,3,3,3,3,6,7,7],"borderColor":"rgba(71,252,141,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"sweden","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,3,7,8,10,11,16],"borderColor":"rgba(66,125,5,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"denmark","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,4,4,4,6,9],"borderColor":"rgba(181,100,125,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"portugal","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,2,4,6],"borderColor":"rgba(84,222,168,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"malaysia","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,3],"borderColor":"rgba(85,197,84,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"canada","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,4,8,9,12,12],"borderColor":"rgba(86,39,123,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"australia","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,2,3,3,3,3,3,3,3,3,5,5,5,6,7,7],"borderColor":"rgba(86,21,247,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"brazil","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,7,11],"borderColor":"rgba(184,90,83,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"ireland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,2,2,2,3,3],"borderColor":"rgba(196,121,31,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"greece","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,3,4,4,5,5,6,10],"borderColor":"rgba(54,97,247,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"poland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,3,3,4,5,5,5,5],"borderColor":"rgba(239,207,5,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"indonesia","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,4,5,5,5,7,19,25,32],"borderColor":"rgba(61,152,116,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"philippines","data":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,5,5,8,12,12,14,17,17,18],"borderColor":"rgba(226,46,206,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"hongkong","data":[1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,4,4,4],"borderColor":"rgba(63,149,96,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"iraq","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,4,4,6,7,7,7,8,9,10,10,10,11,12,13,17],"borderColor":"rgba(198,94,216,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"algeria","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,3,4,4,5,7,9,11],"borderColor":"rgba(22,216,98,1)","backgroundColor":"rgba(0,0,0,0)"}]');
+const deathDataDisplay = JSON.parse('[{"label":"china","data":[17,25,41,56,80,106,132,170,213,259,304,361,425,490,563,636,722,811,908,1016,1113,1259,1380,1523,1665,1770,1868,2004,2118,2236,2345,2442,2592,2663,2715,2744,2788,2835,2870,2912,2943,2981,3012,3042,3070,3097,3119,3136,3158,3169,3176,3189,3199,3213,3226,3237,3245,3248,3255,3261],"dates":["Jan 22","Jan 23","Jan 24","Jan 25","Jan 26","Jan 27","Jan 28","Jan 29","Jan 30","Jan 31","Feb 01","Feb 02","Feb 03","Feb 04","Feb 05","Feb 06","Feb 07","Feb 08","Feb 09","Feb 10","Feb 11","Feb 12","Feb 13","Feb 14","Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(26,251,73,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"italy","data":[0,0,0,0,0,0,1,2,3,7,11,12,17,21,29,41,52,79,107,148,197,233,366,463,631,827,1016,1266,1441,1809,2158,2503,2978,3405,4032,4825],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(176,48,231,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"spain","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,3,8,10,17,30,36,55,86,133,196,294,342,533,638,831,1093,1381],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(14,55,124,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"germany","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,3,6,8,9,13,17,26,28,44,68,84],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(154,221,93,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"iran","data":[0,0,0,0,2,2,4,6,8,12,16,19,26,34,43,54,66,77,92,108,124,145,194,237,291,354,429,514,611,724,853,988,1135,1284,1433,1556],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(171,216,1,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"us","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6,9,11,12,15,19,22,26,30,38,41,49,57,68,86,109,150,207,256,302],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(109,161,84,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"france","data":[1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,3,4,4,7,9,16,19,30,33,48,61,79,91,127,148,175,264,372,450,562],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(221,19,242,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"sKorea","data":[0,0,0,0,0,1,2,2,6,8,11,12,13,16,17,21,28,32,35,42,43,48,50,53,60,60,66,67,72,75,75,81,84,91,94,102],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(53,127,183,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"switzerland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,3,4,7,11,13,14,19,27,33,43,56,80],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(63,189,87,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"uk","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,2,3,5,6,8,10,11,21,35,55,71,104,144,177,233],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(149,200,77,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"netherlands","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,3,4,4,5,5,10,12,20,24,43,58,76,106,136],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(8,206,21,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"belgium","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,4,4,10,10,14,21,37,67],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(242,45,181,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"austria","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,3,4,4,6,6,8],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(29,160,13,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"norway","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,3,3,3,3,6,7,7,7],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(1,119,165,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"sweden","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,3,7,8,10,11,16,20],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(94,56,94,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"denmark","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,4,4,4,6,9,13],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(177,116,98,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"portugal","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,2,4,6,12],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(254,103,17,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"malaysia","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,3,8],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(202,133,175,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"canada","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,4,8,9,12,12,19],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28",\
+"Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(144,155,170,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"australia","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,2,3,3,3,3,3,3,3,3,5,5,5,6,7,7,7],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(61,80,48,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"brazil","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,7,11,18],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(208,119,88,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"ireland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,2,2,2,3,3,3],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(93,209,155,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"greece","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,3,4,4,5,5,6,10,13],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(73,225,170,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"poland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,3,3,4,5,5,5,5,5],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(158,172,2,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"indonesia","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,4,5,5,5,7,19,25,32,38],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(58,162,135,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"philippines","data":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,5,5,8,12,12,14,17,17,18,19],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(67,239,181,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"hongkong","data":[1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,4,4,4,4],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(223,222,174,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"iraq","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,4,4,6,7,7,7,8,9,10,10,10,11,12,13,17,17],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(23,68,170,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"algeria","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,3,4,4,5,7,9,11,15],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(10,75,40,1)","backgroundColor":"rgba(0,0,0,0)"}]');
 
-const dataDisplay = JSON.parse('[{"label":"czechia","data":[3,3,5,5,8,19,26,32,38,63,94,116,141,189,298,383,450,560,765,889,995],"borderColor":"rgba(204,196,109,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"World w/o China","data":[9,15,30,40,56,66,84,102,131,159,173,186,190,221,248,278,330,354,382,461,481,526,587,608,697,781,896,999,1124,1212,1385,1715,2055,2429,2764,3323,4288,5364,6780,8559,10292,12746,14905,17873,21399,25404,29256,33627,38170,45421,53763,64659,75809,88733,101609,117344,137894,163966,194589],"borderColor":"rgba(117,227,155,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"china","data":[571,830,1287,1975,2744,4515,5974,7711,9692,11791,14380,17205,20440,24324,28018,31161,34546,37198,40171,42638,44653,58761,63851,66492,68500,70548,72436,74185,74576,75465,76288,76936,77150,77658,78064,78497,78824,79251,79824,80026,80151,80270,80409,80552,80651,80695,80735,80754,80778,80793,80813,80824,80844,80860,80881,80894,80928,80967,81008],"borderColor":"rgba(142,74,228,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"italy","data":[3,3,3,3,3,4,21,79,157,229,323,470,655,889,1128,1701,2036,2502,3089,3858,4636,5883,7375,9172,10149,12462,15113,17660,21157,24747,27980,31506,35713,41035,47021],"borderColor":"rgba(84,85,212,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"spain","data":[2,2,2,2,2,2,2,2,2,3,9,13,25,33,58,84,120,165,228,282,401,525,674,1231,1695,2277,3146,5232,6391,7988,9942,11826,14769,18077,21571],"borderColor":"rgba(209,189,245,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"germany","data":[16,16,16,16,16,16,16,16,16,16,18,26,48,74,79,130,165,203,262,545,670,800,1040,1224,1565,1966,2745,3675,4599,5813,7272,9367,12327,15320,19848],"borderColor":"rgba(147,24,125,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"iran","data":[0,0,0,0,2,5,18,29,43,61,95,139,245,388,593,978,1501,2336,2922,3513,4747,5823,6566,7161,8042,9000,10075,11364,12729,13938,14991,16169,17361,18407,19644],"borderColor":"rgba(249,146,142,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"us","data":[15,15,15,15,15,15,35,35,35,53,57,60,60,63,68,75,100,124,158,221,319,435,541,704,994,1301,1697,2247,2943,3680,4663,6411,9259,13789,19383],"borderColor":"rgba(68,85,221,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"france","data":[12,12,12,12,12,12,12,12,12,12,14,18,38,57,100,130,191,212,285,423,653,949,1209,1412,1784,2281,2876,3661,4499,5423,6633,7730,9134,10995,12612],"borderColor":"rgba(92,27,234,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"sKorea","data":[28,29,30,31,58,111,209,436,602,833,977,1261,1766,2337,3150,3736,4335,5186,5621,6284,6593,7041,7313,7478,7513,7755,7869,7979,8086,8162,8236,8320,8413,8565,8652],"borderColor":"rgba(18,15,166,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"switzerland","data":[0,0,0,0,0,0,0,0,0,0,1,1,8,15,19,24,30,58,93,120,214,268,332,374,497,652,868,1139,1375,2217,2353,2742,3115,4222,5615],"borderColor":"rgba(206,50,103,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"uk","data":[9,9,9,9,9,9,9,9,13,13,13,13,16,20,23,36,39,51,87,116,164,209,278,321,383,460,590,798,1140,1391,1543,1950,2626,3269,3983],"borderColor":"rgba(133,243,196,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"netherlands","data":[0,0,0,0,0,0,0,0,0,0,0,0,1,2,7,10,18,23,38,82,128,188,265,321,382,503,614,804,959,1135,1413,1705,2051,2460,2994],"borderColor":"rgba(131,64,95,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"belgium","data":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,8,15,23,50,109,169,200,239,267,314,399,559,689,886,1058,1243,1486,1795,2257],"borderColor":"rgba(71,252,141,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"austria","data":[0,0,0,0,0,0,0,0,0,0,2,2,5,7,10,14,18,24,29,43,66,81,104,131,182,246,361,504,655,860,1018,1332,1646,2179,2649],"borderColor":"rgba(66,125,5,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"norway","data":[0,0,0,0,0,0,0,0,0,0,0,1,4,6,15,19,25,33,59,94,127,156,176,227,400,629,800,996,1109,1256,1348,1471,1591,1790,1959],"borderColor":"rgba(181,100,125,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"sweden","data":[1,1,1,1,1,1,1,1,1,1,1,2,7,11,13,14,15,30,52,94,137,161,203,260,355,500,687,814,961,1040,1121,1196,1301,1439,1639],"borderColor":"rgba(84,222,168,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"denmark","data":[0,0,0,0,0,0,0,0,0,0,0,0,1,2,3,4,4,10,14,19,21,27,35,90,262,514,674,804,836,864,914,977,1057,1151,1255],"borderColor":"rgba(85,197,84,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"portugal","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,4,6,9,13,21,30,39,41,61,78,112,169,245,331,448,642,786,1020],"borderColor":"rgba(86,39,123,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"malaysia","data":[22,22,22,22,22,22,22,22,22,22,22,22,22,25,25,29,29,36,50,55,83,93,99,117,129,149,158,197,238,428,566,673,790,900,1030],"borderColor":"rgba(86,21,247,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"canada","data":[8,8,8,8,8,8,9,9,10,11,11,12,14,15,20,24,27,30,34,37,54,60,66,77,95,110,142,198,252,341,441,598,727,873,1087],"borderColor":"rgba(184,90,83,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"australia","data":[15,15,15,15,15,17,19,21,22,22,22,23,23,25,25,29,33,39,53,60,63,74,83,93,116,128,156,199,248,300,401,455,596,756,928],"borderColor":"rgba(196,121,31,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"brazil","data":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,8,13,19,25,25,34,52,77,151,151,200,234,346,529,640,970],"borderColor":"rgba(54,97,247,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"ireland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,6,13,18,19,21,24,34,43,70,90,129,170,223,292,366,557,683],"borderColor":"rgba(239,207,5,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"greece","data":[0,0,0,0,0,0,0,0,0,0,0,1,3,4,7,7,7,7,9,31,45,66,73,84,89,99,117,190,228,331,352,387,418,464,495],"borderColor":"rgba(61,152,116,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"poland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,5,6,11,17,22,31,51,68,104,125,177,238,287,355,425],"borderColor":"rgba(226,46,206,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"indonesia","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,4,4,6,19,27,34,34,69,96,117,134,172,227,309,369],"borderColor":"rgba(63,149,96,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"philippines","data":[3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5,6,10,24,33,49,52,64,111,140,142,187,202,217,230],"borderColor":"rgba(198,94,216,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"hongkong","data":[56,57,60,62,65,69,69,70,74,81,85,89,92,93,95,100,100,101,103,105,108,108,115,116,121,130,131,132,142,149,155,168,193,208,256],"borderColor":"rgba(22,216,98,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"iraq","data":[0,0,0,0,0,0,0,1,1,1,5,5,7,8,13,19,27,32,37,40,46,54,65,71,71,71,83,101,110,124,133,154,164,192,208],"borderColor":"rgba(115,145,86,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"algeria","data":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,3,5,8,17,17,17,19,20,20,20,20,26,26,39,54,60,61,75,90,94],"borderColor":"rgba(195,230,51,1)","backgroundColor":"rgba(0,0,0,0)"}]')
+const dataDisplay = JSON.parse('[{"label":"czechia","data":[3,3,5,5,8,19,26,32,38,63,94,116,141,189,298,383,450,560,765,889,1047],"dates":["Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(26,251,73,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"World w/o China","data":[9,15,30,40,56,66,84,102,131,159,173,186,190,221,248,278,330,354,382,461,481,526,587,608,697,781,896,999,1124,1212,1385,1715,2055,2429,2764,3323,4288,5364,6780,8559,10292,12746,14905,17873,21399,25404,29256,33627,38170,45421,53763,64659,75809,88733,101609,117344,137894,163966,194589,223982],"dates":["Jan 22","Jan 23","Jan 24","Jan 25","Jan 26","Jan 27","Jan 28","Jan 29","Jan 30","Jan 31","Feb 01","Feb 02","Feb 03","Feb 04","Feb 05","Feb 06","Feb 07","Feb 08","Feb 09","Feb 10","Feb 11","Feb 12","Feb 13","Feb 14","Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(176,48,231,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"china","data":[571,830,1287,1975,2744,4515,5974,7711,9692,11791,14380,17205,20440,24324,28018,31161,34546,37198,40171,42638,44653,58761,63851,66492,68500,70548,72436,74185,74576,75465,76288,76936,77150,77658,78064,78497,78824,79251,79824,80026,80151,80270,80409,80552,80651,80695,80735,80754,80778,80793,80813,80824,80844,80860,80881,80894,80928,80967,81008,81054],"dates":["Jan 22","Jan 23","Jan 24","Jan 25","Jan 26","Jan 27","Jan 28","Jan 29","Jan 30","Jan 31","Feb 01","Feb 02","Feb 03","Feb 04","Feb 05","Feb 06","Feb 07","Feb 08","Feb 09","Feb 10","Feb 11","Feb 12","Feb 13","Feb 14","Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(14,55,124,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"italy","data":[3,3,3,3,3,4,21,79,157,229,323,470,655,889,1128,1701,2036,2502,3089,3858,4636,5883,7375,9172,10149,12462,15113,17660,21157,24747,27980,31506,35713,41035,47021,53578],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(154,221,93,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"spain","data":[2,2,2,2,2,2,2,2,2,3,9,13,25,33,58,84,120,165,228,282,401,525,674,1231,1695,2277,3146,5232,6391,7988,9942,11826,14769,18077,21571,25496],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(171,216,1,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"germany","data":[16,16,16,16,16,16,16,16,16,16,18,26,48,74,79,130,165,203,262,545,670,800,1040,1224,1565,1966,2745,3675,4599,5813,7272,9367,12327,15320,19848,22364],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(109,161,84,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"iran","data":[0,0,0,0,2,5,18,29,43,61,95,139,245,388,593,978,1501,2336,2922,3513,4747,5823,6566,7161,8042,9000,10075,11364,12729,13938,14991,16169,17361,18407,19644,20610],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(221,19,242,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"us","data":[15,15,15,15,15,15,35,35,35,53,57,60,60,63,68,75,100,124,158,221,319,435,541,704,994,1301,1697,2247,2943,3680,4663,6411,9259,13789,19383,24207],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(53,127,183,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"france","data":[12,12,12,12,12,12,12,12,12,12,14,18,38,57,100,130,191,212,285,423,653,949,1209,1412,1784,2281,2876,3661,4499,5423,6633,7730,9134,10995,12612,14459],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(63,189,87,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"sKorea","data":[28,29,30,31,58,111,209,436,602,833,977,1261,1766,2337,3150,3736,4335,5186,5621,6284,6593,7041,7313,7478,7513,7755,7869,7979,8086,8162,8236,8320,8413,8565,8652,8799],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(149,200,77,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"switzerland","data":[0,0,0,0,0,0,0,0,0,0,1,1,8,15,19,24,30,58,93,120,214,268,332,374,497,652,868,1139,1375,2217,2353,2742,3115,4222,5615,6863],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(8,206,21,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"uk","data":[9,9,9,9,9,9,9,9,13,13,13,13,16,20,23,36,39,51,87,116,164,209,278,321,383,460,590,798,1140,1391,1543,1950,2626,3269,3983,5018],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(242,45,181,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"netherlands","data":[0,0,0,0,0,0,0,0,0,0,0,0,1,2,7,10,18,23,38,82,128,188,265,321,382,503,614,804,959,1135,1413,1705,2051,2460,2994,3631],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(29,160,13,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"belgium","data":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,8,15,23,50,109,169,200,239,267,314,399,559,689,886,1058,1243,1486,1795,2257,2815],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(1,119,165,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"austria","data":[0,0,0,0,0,0,0,0,0,0,2,2,5,7,10,14,18,24,29,43,66,81,104,131,182,246,361,504,655,860,1018,1332,1646,2179,2649,2992],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(94,56,94,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"norway","data":[0,0,0,0,0,0,0,0,0,0,0,1,4,6,15,19,25,33,59,94,127,156,176,227,400,629,800,996,1109,1256,1348,1471,1591,1790,1959,2164],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(177,116,98,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"sweden","data":[1,1,1,1,1,1,1,1,1,1,1,2,7,11,13,14,15,30,52,94,137,161,203,260,355,500,687,814,961,1040,1121,1196,1301,1439,1639,1770],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":\
+"rgba(254,103,17,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"denmark","data":[0,0,0,0,0,0,0,0,0,0,0,0,1,2,3,4,4,10,14,19,21,27,35,90,262,514,674,804,836,864,914,977,1057,1151,1255,1326],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(202,133,175,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"portugal","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,4,6,9,13,21,30,39,41,61,78,112,169,245,331,448,642,786,1020,1280],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(144,155,170,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"malaysia","data":[22,22,22,22,22,22,22,22,22,22,22,22,22,25,25,29,29,36,50,55,83,93,99,117,129,149,158,197,238,428,566,673,790,900,1030,1183],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(61,80,48,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"canada","data":[8,8,8,8,8,8,9,9,10,11,11,12,14,15,20,24,27,30,34,37,54,60,66,77,95,110,142,198,252,341,441,598,727,873,1087,1328],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(208,119,88,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"australia","data":[15,15,15,15,15,17,19,21,22,22,22,23,23,25,25,29,33,39,53,60,63,74,83,93,116,128,156,199,248,300,401,455,596,756,928,1072],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(93,209,155,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"brazil","data":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,8,13,19,25,25,34,52,77,151,151,200,234,346,529,640,970,1178],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(73,225,170,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"ireland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,6,13,18,19,21,24,34,43,70,90,129,170,223,292,366,557,683,785],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(158,172,2,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"greece","data":[0,0,0,0,0,0,0,0,0,0,0,1,3,4,7,7,7,7,9,31,45,66,73,84,89,99,117,190,228,331,352,387,418,464,495,530],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(58,162,135,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"poland","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,5,6,11,17,22,31,51,68,104,125,177,238,287,355,425,536],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(67,239,181,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"indonesia","data":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,4,4,6,19,27,34,34,69,96,117,134,172,227,309,369,450],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(223,222,174,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"philippines","data":[3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,5,6,10,24,33,49,52,64,111,140,142,187,202,217,230,307],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(23,68,170,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"hongkong","data":[56,57,60,62,65,69,69,70,74,81,85,89,92,93,95,100,100,101,103,105,108,108,115,116,121,130,131,132,142,149,155,168,193,208,256,274],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(10,75,40,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"iraq","data":[0,0,0,0,0,0,0,1,1,1,5,5,7,8,13,19,27,32,37,40,46,54,65,71,71,71,83,101,110,124,133,154,164,192,208,214],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(251,182,61,1)","backgroundColor":"rgba(0,0,0,0)"},{"label":"algeria","data":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,3,5,8,17,17,17,19,20,20,20,20,26,26,39,54,60,61,75,90,94,139],"dates":["Feb 15","Feb 16","Feb 17","Feb 18","Feb 19","Feb 20","Feb 21","Feb 22","Feb 23","Feb 24","Feb 25","Feb 26","Feb 27","Feb 28","Feb 29","Mar 01","Mar 02","Mar 03","Mar 04","Mar 05","Mar 06","Mar 07","Mar 08","Mar 09","Mar 10","Mar 11","Mar 12","Mar 13","Mar 14","Mar 15","Mar 16","Mar 17","Mar 18","Mar 19","Mar 20","Mar 21"],"borderColor":"rgba(138,201,142,1)","backgroundColor":"rgba(0,0,0,0)"}]')
