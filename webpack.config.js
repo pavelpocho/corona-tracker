@@ -9,7 +9,7 @@ module.exports = {
     fs: "empty"
   },
   output: {
-    filename: "bundle_0.6.3.js",
+    filename: "bundle_0.6.4.js",
     chunkFilename: "[name].bundle.js",
     publicPath: "/dist/",
     path: path.resolve("C:/xampp/htdocs/corona-tracker/dist")
@@ -19,7 +19,7 @@ module.exports = {
     new MiniCssExtractPlugin({
       // Options similar to the same options in webpackOptions.output
       // both options are optional
-      filename: "style_0.6.3.css",
+      filename: "style_0.6.4.css",
       chunkFilename: "something.css"
     })
   ],
